@@ -1,0 +1,145 @@
+controller:
+  serviceType: LoadBalancer
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  
+  # Jenkins configuration
+  jenkinsUrl: http://jenkins:8080/
+  jenkinsUrlTls: https://jenkins:8443/
+  
+  # Install plugins
+  installPlugins:
+    - kubernetes:1.31.3
+    - workflow-aggregator:2.6
+    - git:4.15.2
+    - configuration-as-code:1.57
+    - blueocean:1.25.8
+    - docker-workflow:1.28
+    - aws-credentials:1.0.15
+    - ecr:1.6
+    - pipeline-aws:1.43
+    - credentials-binding:1.27
+    - ssh-credentials:1.20
+    - matrix-project:1.20
+    - junit:1.57
+    - cobertura:1.17
+    - sonar:2.14
+    - htmlpublisher:1.25
+    - timestamper:1.18
+    - ws-cleanup:0.45
+    - build-timeout:1.24
+    - parameterized-trigger:2.44
+    - conditional-buildstep:1.4.1
+    - throttle-concurrents:2.2
+    - lockable-resources:2.16
+    - job-dsl:1.81
+    - script-security:1.85
+    - structs:1.32
+    - scm-api:2.4.1
+    - branch-api:2.11.0
+    - cloudbees-folder:6.18
+    - antisamy-markup-formatter:1.9
+    - build-name-setter:2.2.0
+    - credentials:1074.v60b_1c6388a_8
+    - display-name-updater:1.3
+    - docker-commons:1.21
+    - docker-plugin:1.5
+    - durable-task:1.42
+    - git-client:4.4.0
+    - git-server:1.10
+    - handlebars:1.1.1
+    - jackson2-api:2.16.1
+    - jdk-tool:1.5
+    - jquery-detached:1.2.1
+    - junit:1.57
+    - mailer:1.35
+    - matrix-auth:3.1.1
+    - matrix-project:1.20
+    - momentjs:1.1.1
+    - pipeline-build-step:2.18
+    - pipeline-github-lib:1.0
+    - pipeline-graph-analysis:1.13
+    - pipeline-input-step:456.vd8cc1508622
+    - pipeline-milestone-step:1.3.2
+    - pipeline-model-api:1.9.4
+    - pipeline-model-definition:1.9.4
+    - pipeline-model-extensions:1.9.4
+    - pipeline-rest-api:2.25
+    - pipeline-stage-step:2.5
+    - pipeline-stage-tags-metadata:1.9.4
+    - pipeline-utility-steps:2.13.0
+    - plain-credentials:1.10
+    - resource-disposer:0.21
+    - scm-api:2.4.1
+    - script-security:1.85
+    - ssh-credentials:1.20
+    - structs:1.32
+    - workflow-aggregator:2.6
+    - workflow-api:2.47
+    - workflow-basic-steps:2.26
+    - workflow-cps:2.96
+    - workflow-cps-global-lib:2.22
+    - workflow-durable-task-step:2.40
+    - workflow-job:2.47
+    - workflow-multibranch:2.27
+    - workflow-scm-step:2.16
+    - workflow-step-api:2.27
+    - workflow-support:3.8
+    - ws-cleanup:0.45
+
+  # Security configuration
+  securityRealm: |
+    <securityRealm class="hudson.security.HudsonPrivateSecurityRealm">
+      <disableSignup>false</disableSignup>
+    </securityRealm>
+  
+  authorizationStrategy: |
+    <authorizationStrategy class="hudson.security.FullControlOnceLoggedInAuthorizationStrategy">
+      <denyAnonymousReadAccess>true</denyAnonymousReadAccess>
+    </authorizationStrategy>
+
+  # Additional configuration
+  additionalConfig: |
+    <jenkins>
+      <systemMessage>Jenkins configured automatically by Jenkins Configuration as Code plugin</systemMessage>
+      <numExecutors>2</numExecutors>
+      <scmCheckoutRetryCount>3</scmCheckoutRetryCount>
+      <mode>NORMAL</mode>
+      <useSecurity>true</useSecurity>
+    </jenkins>
+
+# Agent configuration
+agent:
+  enabled: true
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Persistence
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: "gp2"
+  accessMode: ReadWriteOnce
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: "jenkins"
+
+# Ingress (optional)
+ingress:
+  enabled: false
+  annotations: {}
+  hostName: ""
+  tls: [] 
