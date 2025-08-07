@@ -1,0 +1,77 @@
+replicaCount: 2
+
+image:
+  repository: your-account/django-app
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+env:
+  - name: DEBUG
+    value: "False"
+  - name: ALLOWED_HOSTS
+    value: "*"
+  - name: DATABASE_URL
+    value: "postgresql://admin:password@database:5432/django_db"
+  - name: SECRET_KEY
+    value: "your-secret-key-here"
+  - name: DJANGO_SETTINGS_MODULE
+    value: "app.settings"
+
+configMap:
+  enabled: true
+  data:
+    DJANGO_SETTINGS_MODULE: "app.settings"
+    DEBUG: "False"
+    ALLOWED_HOSTS: "*" 

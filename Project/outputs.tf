@@ -158,4 +158,21 @@ output "argocd_admin_password" {
   description = "The admin password for Argo CD"
   value       = module.argo_cd.argocd_admin_password
   sensitive   = true
+}
+
+# Monitoring outputs
+output "prometheus_url" {
+  description = "The URL of the Prometheus server"
+  value       = module.monitoring.prometheus_url
+}
+
+output "grafana_url" {
+  description = "The URL of the Grafana server"
+  value       = module.monitoring.grafana_url
+}
+
+output "grafana_admin_password" {
+  description = "The admin password for Grafana"
+  value       = module.monitoring.grafana_admin_password
+  sensitive   = true
 } 

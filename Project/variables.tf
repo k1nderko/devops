@@ -42,7 +42,7 @@ variable "ecr_repository_name" {
 variable "eks_cluster_name" {
   description = "Name of the EKS cluster"
   type        = string
-  default     = "devops-cluster"
+  default     = "final-project-cluster"
 }
 
 # RDS variables
@@ -96,4 +96,36 @@ variable "aurora_instance_class" {
   description = "The instance type of the Aurora cluster instances"
   type        = string
   default     = "db.r5.large"
+}
+
+# Monitoring variables
+variable "prometheus_enabled" {
+  description = "Enable Prometheus monitoring"
+  type        = bool
+  default     = true
+}
+
+variable "grafana_enabled" {
+  description = "Enable Grafana monitoring"
+  type        = bool
+  default     = true
+}
+
+variable "grafana_admin_password" {
+  description = "Admin password for Grafana"
+  type        = string
+  default     = "admin"
+  sensitive   = true
+}
+
+variable "prometheus_retention_days" {
+  description = "Number of days to retain Prometheus data"
+  type        = number
+  default     = 15
+}
+
+variable "grafana_persistence_enabled" {
+  description = "Enable persistence for Grafana"
+  type        = bool
+  default     = true
 } 

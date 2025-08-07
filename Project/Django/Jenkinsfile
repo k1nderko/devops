@@ -1,0 +1,178 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+                apiVersion: v1
+                kind: Pod
+                spec:
+                  containers:
+                  - name: docker
+                    image: docker:latest
+                    command:
+                    - cat
+                    tty: true
+                    volumeMounts:
+                    - mountPath: /var/run/docker.sock
+                      name: docker-sock
+                  - name: kubectl
+                    image: bitnami/kubectl:latest
+                    command:
+                    - cat
+                    tty: true
+                  volumes:
+                  - name: docker-sock
+                    hostPath:
+                      path: /var/run/docker.sock
+            '''
+        }
+    }
+    
+    environment {
+        AWS_REGION = 'us-east-1'
+        ECR_REPOSITORY = 'django-app'
+        GITHUB_REPO = 'your-github-repo/charts'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script {
+                    echo "Checking out code from ${env.GIT_URL}"
+                }
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                container('docker') {
+                    script {
+                        echo "Running Django tests..."
+                        sh '''
+                            docker run --rm -v ${WORKSPACE}:/app -w /app python:3.11-slim \
+                                bash -c "pip install -r requirements.txt && python manage.py test"
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                container('docker') {
+                    script {
+                        echo "Building Docker image..."
+                        sh '''
+                            # Login to ECR
+                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                            
+                            # Build image
+                            docker build -t ${ECR_REPOSITORY}:${IMAGE_TAG} .
+                            docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}
+                            
+                            # Push to ECR
+                            docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}
+                            
+                            # Tag as latest for main branch
+                            if [ "${env.BRANCH_NAME}" = "main" ]; then
+                                docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:latest
+                                docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:latest
+                            fi
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Update Helm Chart') {
+            when { branch 'main' }
+            steps {
+                container('kubectl') {
+                    script {
+                        echo "Updating Helm chart with new image tag..."
+                        sh '''
+                            # Clone charts repository
+                            git clone https://github.com/${GITHUB_REPO}.git charts-repo
+                            cd charts-repo
+                            
+                            # Update image tag in values.yaml
+                            sed -i "s/tag:.*/tag: ${IMAGE_TAG}/" charts/django-app/values.yaml
+                            
+                            # Commit and push changes
+                            git config user.email "jenkins@example.com"
+                            git config user.name "Jenkins"
+                            git add .
+                            git commit -m "Update image tag to ${IMAGE_TAG}"
+                            git push origin main
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Argo CD') {
+            when { branch 'main' }
+            steps {
+                container('kubectl') {
+                    script {
+                        echo "Deploying to Argo CD..."
+                        sh '''
+                            # Wait for Argo CD to sync
+                            kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
+                            
+                            # Check application status
+                            kubectl get applications -n argocd
+                            
+                            # Sync application
+                            argocd app sync django-app --prune
+                            
+                            # Wait for sync to complete
+                            argocd app wait django-app --health --timeout=300
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Health Check') {
+            when { branch 'main' }
+            steps {
+                container('kubectl') {
+                    script {
+                        echo "Performing health checks..."
+                        sh '''
+                            # Wait for deployment to be ready
+                            kubectl rollout status deployment/django-app -n django-app --timeout=300s
+                            
+                            # Port forward to access the application
+                            kubectl port-forward svc/django-app 8000:8000 -n django-app &
+                            PF_PID=$!
+                            
+                            # Wait for port forward
+                            sleep 10
+                            
+                            # Health check
+                            curl -f http://localhost:8000/ || exit 1
+                            
+                            # Cleanup
+                            kill $PF_PID
+                        '''
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo "Pipeline completed for ${env.BUILD_NUMBER}"
+        }
+        success {
+            echo "Pipeline succeeded!"
+        }
+        failure {
+            echo "Pipeline failed!"
+        }
+    }
+} 
